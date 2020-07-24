@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+	<head>
+    <meta charset="UTF-8">
+		<title>Revista Rio Pesquisa</title>
+		<script src="js/pdf.js"></script>
+		<script src="js/jquery-3.5.1.min.js"></script>
+		<script src="js/turn.min.js"></script>
+		<!--script src="js/zoom.min.js">Próxima implementação</script-->
+		<script>
+window.addEventListener('load',revista);
+function revista() {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.js';
+
+  function renderPage(num,el) {
+    pdfDoc.getPage(num).then(function(page) {
+      var viewport = page.getViewport({ scale: 1, });
+      el.canvas.height = viewport.height;
+      el.canvas.width = viewport.width;
+      var renderContext = {
+        canvasContext: el,
+        viewport: viewport,
+      };
+      var renderTask = page.render(renderContext);
+      renderTask.promise.then(function () {
+        if (num == 1) num++;
+        if (num < pdfDoc.numPages) {
+          renderPage(num+1,(document.createElement('canvas')).getContext('2d'));
+        } else if (num = pdfDoc.numPages) {
+          $("#revista").turn({
+            display: 'double',
+            width: el.canvas.width*2,
+        		height: el.canvas.height,
+            inclination: 50
+          });
+        }
+      });
+    });
+    document.getElementById('revista').appendChild(el.canvas);
+  }
+  var pdfDoc;
+  var loadingTask = pdfjsLib.getDocument('pdf/rio_pesquisa_46_2019.pdf');
+  loadingTask.promise.then(function(pdfDoc_) {
+    pdfDoc = pdfDoc_;
+    renderPage(1,(document.createElement('canvas')).getContext('2d'));
+  });
+}
+		</script>
+		<style>
+		</style>
+	</head>
+	<body>
+	<div id="revista"></div>
+	</body>
+</html>
