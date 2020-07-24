@@ -23,7 +23,7 @@ function revista() {
       };
       var renderTask = page.render(renderContext);
       renderTask.promise.then(function () {
-        if (num == 1) num++;
+        //if (num == 1) num++; // Pula a segunda página, pois é muito pesada.
         if (num < pdfDoc.numPages) {
           renderPage(num+1,(document.createElement('canvas')).getContext('2d'));
         } else if (num = pdfDoc.numPages) {
