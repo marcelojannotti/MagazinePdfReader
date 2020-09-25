@@ -61,15 +61,27 @@
                             }
                             if (num == pdfDoc.numPages) {
                                 elRevista.addEventListener('fullscreenchange', function() {
-                                    $('#revista').turn('zoom', Math.min(window.innerWidth / elRevista.offsetWidth, window.innerHeight / elRevista.offsetHeight));
+                                    $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
                                 });
                                 elRevista.addEventListener('click', function() {
                                     if (!document.fullscreenElement) {
-                                        elRevista.requestFullscreen();
-                                        $('#revista').turn('zoom', Math.min(window.innerWidth / elRevista.offsetWidth, window.innerHeight / elRevista.offsetHeight));
+                                        elRevista.parentElement.requestFullscreen();
+                                        $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
                                     }
                                 });
-                                $('#revista').turn('zoom', Math.min(window.innerWidth / elRevista.offsetWidth, window.innerHeight / elRevista.offsetHeight));
+                                $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
+                                
+                                window.addEventListener('resize', function() {
+                                    $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
+                                })
+
+                                document.addEventListener("keyup", function(e) {
+                                    if (e.keyCode === 39) {
+                                        $('#revista').turn('next');
+                                    } else if (e.keyCode === 37) {
+                                        $('#revista').turn('previous');
+                                    }
+                                }, false);
                             }
                         });
                     });
