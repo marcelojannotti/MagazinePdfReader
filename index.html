@@ -26,7 +26,8 @@
         <script src="js/turn.min.js"></script>
         <script>
             window.addEventListener('load', function() {
-                revista(document.getElementById('revista'))
+                revista(document.getElementById('revista'));
+                screen.orientation.lock('landscape');
             });
             function revista(elRevista) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.js';
