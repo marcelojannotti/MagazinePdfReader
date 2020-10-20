@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Revista Rio Pesquisa</title>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <style>
             #revista.loading canvas {
                 display: none;
@@ -20,6 +21,14 @@
                 left: 0;
                 display: block;
             }
+
+            #revista #zoomBt::before {
+              content: '-';
+            }
+
+            #revista #zoomBt::after {
+              content: '+';
+            }
         </style>
         <script src="js/pdf.js"></script>
         <script src="js/jquery-3.5.1.min.js"></script>
@@ -30,11 +39,37 @@
             });
             function revista(elRevista) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.js';
+                var elFull = document.getElementById('fullscreenBt'),
+                elPrev = document.getElementById('prevBt'),
+                elNext = document.getElementById('nextBt'),
+                elZoom = document.getElementById('zoomBt'),
+                ctrlkey = false,
+                zoomX = 0,
+                zoomY = 0
+                curPage = 1;
+                
+                function zoom(id,ctx,val) {
+                  var zoom = Math.min(Math.max(Math.min(window.innerWidth / (ctx.canvas.width * 2), window.innerHeight / ctx.canvas.height),val),2);
+                  var oldZoom = $('#revista').turn('zoom');
+                  
+                  if ($('#revista').turn('zoom') <2) {
+                    zoomY = zoomY * (1 + (0.10 * (oldZoom>val?-1:1)));
+                    zoomX = zoomX * (1 + (0.10 * (oldZoom>val?-1:1)));
+                    elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                  }
+                  $('#'+id).turn('zoom',zoom);
+                  if ($('#'+id).turn('zoom') == (Math.min(window.innerWidth / (ctx.canvas.width * 2), window.innerHeight / ctx.canvas.height))) {
+                    zoomX = 0;
+                    zoomY = 0;
+                    elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                  }
+                  elZoom.value = zoom;
+                }
 
                 function renderPage(num, el) {
                     pdfDoc.getPage(num).then(function(page) {
                         var viewport = page.getViewport({
-                            scale: 1,
+                            scale: 2,
                         });
                         el.canvas.height = viewport.height;
                         el.canvas.width = viewport.width;
@@ -63,24 +98,126 @@
                                 elRevista.addEventListener('fullscreenchange', function() {
                                     $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
                                 });
-                                elRevista.addEventListener('click', function() {
+                                document.addEventListener('fullscreenchange', function () {
+                                  if (!document.fullscreenElement) elFull.innerHTML = '&#xE5D0;';
+                                  zoomX = 0;
+                                  zoomY = 0;
+                                  elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+
+                                });
+                                elFull.style['display'] = '';
+                                elZoom.min = Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height);
+                                elZoom.value = elZoom.min;
+                                elZoom.style['display'] = '';
+                                elPrev.style['display'] = '';
+                                elNext.style['display'] = '';
+                                $("#revista").bind("turning", function(e, p, v) {
+                                  if (curPage < p) {
+                                    zoomX = 0;
+                                    zoomY = 0;
+                                    elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                    event.preventDefault();
+                                  } else if (curPage > p) {
+                                    elZoom.min = Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height);
+                                    zoom('revista',el,0);
+                                  }
+                                  curPage = p;
+                                });
+                                elPrev.addEventListener('click',function () {
+                                  $('#revista').turn('previous');
+                                });
+                                elNext.addEventListener('click',function () {
+                                  $('#revista').turn('next');
+                                });
+                                elFull.addEventListener('click', function() {
                                     if (!document.fullscreenElement) {
-                                        elRevista.parentElement.requestFullscreen();
-                                        $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
+                                      elRevista.parentElement.requestFullscreen();
+                                      elFull.innerHTML = '&#xE5D1;';
+                                    } else {
+                                      document.exitFullscreen();
+                                      elFull.innerHTML = '&#xE5D0;';
                                     }
                                 });
-                                $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
+                                
+                                zoom('revista',el,0);
                                 
                                 window.addEventListener('resize', function() {
-                                    $('#revista').turn('zoom', Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height));
-                                })
+                                  elZoom.min = Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height);
+                                  zoom('revista',el,0);
+                                });
 
-                                document.addEventListener("keyup", function(e) {
-                                    if (e.keyCode === 39) {
-                                        $('#revista').turn('next');
-                                    } else if (e.keyCode === 37) {
-                                        $('#revista').turn('previous');
+                                elRevista.parentNode.addEventListener("wheel", function(e) {
+                                  e.preventDefault();
+                                  if (!ctrlkey) {
+                                    if ($('#revista').turn('zoom') != (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) {
+                                      zoomY += 50 * (e.deltaY>0?-1:1);
+                                      elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
                                     }
+                                  } else {
+                                    zoom('revista',el,$('#revista').turn('zoom') + (e.deltaY>0?-0.10:0.10));
+                                  }
+                                });
+                                elZoom.addEventListener("change", function(e) { 
+                                  zoom('revista',el,e.target.value*1);
+                                });
+                                elRevista.parentNode.addEventListener("contextmenu", function(e) { e.preventDefault() });
+                                elRevista.addEventListener("mousemove", function(e) {
+                                  if (e.buttons === 1) {
+                                    if ($('#revista').turn('zoom') != (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) {
+                                      zoomX += e.movementX;
+                                      zoomY += e.movementY;
+                                      elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                    }
+                                  }
+                                  if ($('#revista').turn('zoom') != (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) {
+                                    elRevista.style['cursor'] = 'crosshair';
+                                  } else {
+                                    elRevista.style['cursor'] = '';
+                                  }
+                                });
+
+                                document.addEventListener("keydown", function(e) {
+                                  if (e.keyCode === 17) {
+                                    ctrlkey = true;
+                                  }
+                                });
+                                document.addEventListener("keyup", function(e) {
+                                    if (e.keyCode === 17) {
+                                      ctrlkey = false;
+                                    }
+                                    else if (e.keyCode === 39) {
+                                      if (ctrlkey || $('#revista').turn('zoom') == (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) $('#revista').turn('next');
+                                      else {
+                                        zoomX -= 50;
+                                        elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                      }
+                                    } else if (e.keyCode === 37) {
+                                      if (ctrlkey || $('#revista').turn('zoom') == (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) $('#revista').turn('previous');
+                                      else {
+                                        zoomX += 50;
+                                        elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                      }
+                                    }
+                                    else if (e.keyCode === 38) {
+                                      if (ctrlkey) {
+                                        zoom('revista',el,$('#revista').turn('zoom') - 0.10);
+                                      }
+                                      else if ($('#revista').turn('zoom') != (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) {
+                                        zoomY += 50;
+                                        elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                      }
+                                    }
+                                    else if (e.keyCode === 40) {
+                                      if (ctrlkey) {
+                                        zoom('revista',el,$('#revista').turn('zoom') - 0.10);
+                                      }
+                                      else if ($('#revista').turn('zoom') != (Math.min(window.innerWidth / (el.canvas.width * 2), window.innerHeight / el.canvas.height))) {
+                                        zoomY -= 50;
+                                        elRevista.style['transform'] = 'translate('+zoomX+'px, '+zoomY+'px)';
+                                      }
+                                    }
+                                    else
+                                    console.log(e.keyCode);
                                 }, false);
                             }
                         });
@@ -99,9 +236,13 @@
         </script>
     </head>
     <body style="margin:0;border:0;padding:0;width:100%;height:100%;overflow:hidden;background-color:gray;">
-        <div style="margin:auto;width:100%">
-            <div id="revista" style="background-color:gray;"></div>
+        <div style="width:100%;background-color:gray;">
+            <div id="revista" style="margin:auto;background-color:gray;">
+            </div>
             <progress id='pageLoad'>Carregando Páginas </progress>
-         </div>
+            <input id="zoomBt" type="range" max="2" step="0.1" style="display:none;position:absolute;right:75px;bottom:5px;"/>
+            <button id="fullscreenBt" style="display:none;position:absolute;right:5px;bottom:5px;font-family:Material Icons">&#xE5D0;</button>
+            <button id="prevBt" style="display:none;position:absolute;left:5px;bottom:50%;font-family:Material Icons">&#xE314;</button>
+            <button id="nextBt" style="display:none;position:absolute;right:5px;bottom:50%;font-family:Material Icons">&#xE315;</button>        </div>
     </body>
 </html>
